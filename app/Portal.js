@@ -433,7 +433,7 @@ function SectionHead({ title, sub, action }) {
 
 function Overview({ data, pct, paidTotal, grandTotal, currentWeekId, isAdmin, onOp, goto }) {
   const current = data.timeline.find((w) => w.id === currentWeekId) || data.timeline[0];
-  const openQ = data.questions.filter((q) => q.status !== 'answered').length;
+  const openQ = data.questions.filter((q) => q.status !== 'answered' && !q.hidden).length;
   const pending = data.actionItems.filter(
     (a) => a.status !== 'Provided' && a.status !== 'Not Applicable'
   ).length;
@@ -731,14 +731,16 @@ function ActionItems({ data, canEdit, onOp }) {
 
 function Questions({ data, isAdmin, isClient, onOp }) {
   const [newQ, setNewQ] = useState('');
+  const visible = isAdmin ? data.questions : data.questions.filter((q) => !q.hidden);
+  const hiddenCount = data.questions.filter((q) => q.hidden).length;
+  const sub = isAdmin
+    ? `Answer inline or discuss in Chat.${hiddenCount ? ` ${hiddenCount} hidden from the client.` : ''}`
+    : 'Answer inline or discuss in Chat. These unblock the build.';
   return (
     <section className="section">
-      <SectionHead
-        title="Open Questions & Decisions"
-        sub="Answer inline or discuss in Chat. These unblock the build."
-      />
+      <SectionHead title="Open Questions & Decisions" sub={sub} />
       <div className="q-list">
-        {data.questions.map((q) => (
+        {visible.map((q) => (
           <QuestionCard key={q.id} q={q} isAdmin={isAdmin} isClient={isClient} onOp={onOp} />
         ))}
       </div>
@@ -776,17 +778,17 @@ function QuestionCard({ q, isAdmin, isClient, onOp }) {
   const answered = q.status === 'answered';
 
   return (
-    <div className={`q-card ${answered ? 'answered' : ''}`}>
+    <div className={`q-card ${answered ? 'answered' : ''} ${q.hidden ? 'q-hidden' : ''}`}>
       <div className="q-top">
-        <span className={`badge ${answered ? 'green' : 'amber'}`}>{answered ? 'Answered' : 'Open'}</span>
-        {isAdmin && (
-          <button className="x-btn" title="Remove" onClick={() => onOp({ op: 'question.remove', questionId: q.id })}>×</button>
-        )}
+        <div className="q-badges">
+          <span className={`badge ${answered ? 'green' : 'amber'}`}>{answered ? 'Answered' : 'Open'}</span>
+          {q.hidden && <span className="chip">Hidden from client</span>}
+        </div>
       </div>
       <p className="q-text">{q.text}</p>
       {q.context && <p className="q-context">{q.context}</p>}
 
-      {(isClient || isAdmin) ? (
+      {isClient || isAdmin ? (
         <div className="stack">
           <textarea
             rows={2}
@@ -794,15 +796,37 @@ function QuestionCard({ q, isAdmin, isClient, onOp }) {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />
-          <div className="row-end">
-            {answered && <span className="muted-sm">Saved</span>}
-            <button
-              className="btn"
-              disabled={!draft.trim()}
-              onClick={() => onOp({ op: 'question.answer', questionId: q.id, answer: draft.trim(), status: 'answered' })}
-            >
-              {answered ? 'Update answer' : 'Submit answer'}
-            </button>
+          <div className="q-actions">
+            {isAdmin && (
+              <div className="q-admin-actions">
+                <button
+                  className="btn-ghost sm"
+                  onClick={() => onOp({ op: 'question.setHidden', questionId: q.id, hidden: !q.hidden })}
+                >
+                  {q.hidden ? 'Show to client' : 'Hide from client'}
+                </button>
+                <button
+                  className="btn-ghost sm danger"
+                  onClick={() => {
+                    if (window.confirm('Delete this question permanently? This cannot be undone.')) {
+                      onOp({ op: 'question.remove', questionId: q.id });
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+            <div className="q-submit">
+              {answered && <span className="muted-sm">Saved</span>}
+              <button
+                className="btn"
+                disabled={!draft.trim()}
+                onClick={() => onOp({ op: 'question.answer', questionId: q.id, answer: draft.trim(), status: 'answered' })}
+              >
+                {answered ? 'Update answer' : 'Submit answer'}
+              </button>
+            </div>
           </div>
         </div>
       ) : (

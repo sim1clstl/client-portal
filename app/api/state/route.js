@@ -113,7 +113,13 @@ function applyOp(state, op, body) {
         context: body.context || '',
         answer: '',
         status: 'open',
+        hidden: false,
       });
+      break;
+    }
+    case 'question.setHidden': {
+      const q = state.questions.find((x) => x.id === body.questionId);
+      if (q) q.hidden = !!body.hidden;
       break;
     }
     case 'question.remove': {

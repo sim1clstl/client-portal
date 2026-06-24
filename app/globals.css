@@ -262,9 +262,12 @@ button.stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 .q-list { display: flex; flex-direction: column; gap: 12px; }
 .q-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
 .q-card.answered { background: #fbfdfb; }
+.q-card.q-hidden { opacity: .62; border-style: dashed; }
 .q-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.x-btn { background: transparent; border: none; color: var(--muted-2); font-size: 20px; line-height: 1; padding: 0 4px; }
-.x-btn:hover { color: var(--red); }
+.q-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.q-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.q-admin-actions { display: flex; gap: 8px; }
+.q-submit { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .q-text { font-weight: 600; font-size: 14px; margin: 0 0 4px; }
 .q-context { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; }
 .q-answer { background: var(--green-s); color: #14532d; border-radius: 9px; padding: 10px 12px; font-size: 13.5px; margin-top: 4px; }
