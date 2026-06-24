@@ -12,6 +12,7 @@ const NAV = [
   { id: 'actions', label: 'What We Need', icon: 'check' },
   { id: 'questions', label: 'Open Questions', icon: 'help' },
   { id: 'documents', label: 'Documents', icon: 'file' },
+  { id: 'accounts', label: 'Accounts', icon: 'key' },
   { id: 'chat', label: 'Chat', icon: 'message' },
   { id: 'links', label: 'Quick Links', icon: 'link' },
 ];
@@ -46,6 +47,7 @@ const PATHS = {
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   card: '<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
   external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
+  key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="M11.4 11.6 21 2"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
 };
 
 function Icon({ name, size = 18 }) {
@@ -378,6 +380,10 @@ export default function Portal() {
 
         {active === 'documents' && (
           <Documents data={data} isAdmin={isAdmin} onOp={sendOp} />
+        )}
+
+        {active === 'accounts' && (
+          <Accounts data={data} isAdmin={isAdmin} onOp={sendOp} />
         )}
 
         {active === 'chat' && (
@@ -875,6 +881,147 @@ function DocCard({ doc, isAdmin, onOp }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Accounts                                                            */
+/* ------------------------------------------------------------------ */
+
+function Accounts({ data, isAdmin, onOp }) {
+  const accounts = data.accounts || [];
+  const visible = isAdmin ? accounts : accounts.filter((a) => !a.adminOnly);
+
+  const [adding, setAdding] = useState(false);
+  const [label, setLabel] = useState('');
+  const [category, setCategory] = useState('');
+  const [url, setUrl] = useState('');
+  const [details, setDetails] = useState('');
+  const [adminOnly, setAdminOnly] = useState(false);
+
+  function resetForm() {
+    setLabel(''); setCategory(''); setUrl(''); setDetails(''); setAdminOnly(false); setAdding(false);
+  }
+
+  return (
+    <section className="section">
+      <SectionHead
+        title="Accounts"
+        sub="Shared account references for the project."
+        action={
+          isAdmin && (
+            <button className="btn" onClick={() => setAdding((a) => !a)}>
+              {adding ? 'Close' : '+ Add account'}
+            </button>
+          )
+        }
+      />
+
+      <div className="note">
+        <span className="note-icon"><Icon name="key" size={15} /></span>
+        <span>Keep this to identifiers, URLs, account IDs, and status. <strong>Don’t store passwords or secret keys here</strong> — share credentials through a password manager.</span>
+      </div>
+
+      {isAdmin && adding && (
+        <div className="card admin-card">
+          <div className="stack">
+            <input placeholder="Label (e.g. Stripe Platform)" value={label} onChange={(e) => setLabel(e.target.value)} />
+            <input placeholder="Category (e.g. Payments, Website, Hosting)" value={category} onChange={(e) => setCategory(e.target.value)} />
+            <input placeholder="URL (optional)" value={url} onChange={(e) => setUrl(e.target.value)} />
+            <textarea rows={4} placeholder="Details — emails, account IDs, usernames, status (no passwords)" value={details} onChange={(e) => setDetails(e.target.value)} />
+            <label className="check-row">
+              <input type="checkbox" checked={adminOnly} onChange={(e) => setAdminOnly(e.target.checked)} />
+              Visible to admin only (hide from the client)
+            </label>
+            <div className="row-end">
+              <button className="btn-ghost" onClick={resetForm}>Cancel</button>
+              <button
+                className="btn"
+                disabled={!label.trim()}
+                onClick={async () => {
+                  if (await onOp({ op: 'account.add', label: label.trim(), category: category.trim(), url: url.trim(), details, adminOnly })) resetForm();
+                }}
+              >
+                Add account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="acct-grid">
+        {visible.map((a) => (
+          <AccountCard key={a.id} account={a} isAdmin={isAdmin} onOp={onOp} />
+        ))}
+      </div>
+      {visible.length === 0 && <p className="muted">No accounts yet.</p>}
+    </section>
+  );
+}
+
+function AccountCard({ account, isAdmin, onOp }) {
+  const [edit, setEdit] = useState(false);
+  const [label, setLabel] = useState(account.label);
+  const [category, setCategory] = useState(account.category || '');
+  const [url, setUrl] = useState(account.url || '');
+  const [details, setDetails] = useState(account.details || '');
+  const [adminOnly, setAdminOnly] = useState(!!account.adminOnly);
+  useEffect(() => {
+    setLabel(account.label);
+    setCategory(account.category || '');
+    setUrl(account.url || '');
+    setDetails(account.details || '');
+    setAdminOnly(!!account.adminOnly);
+  }, [account.label, account.category, account.url, account.details, account.adminOnly]);
+
+  if (edit) {
+    return (
+      <div className="acct-card editing">
+        <div className="stack">
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label" />
+          <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" />
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="URL (optional)" />
+          <textarea rows={4} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Details (no passwords)" />
+          <label className="check-row">
+            <input type="checkbox" checked={adminOnly} onChange={(e) => setAdminOnly(e.target.checked)} />
+            Visible to admin only
+          </label>
+          <div className="row-between">
+            <button className="btn-ghost danger" onClick={() => onOp({ op: 'account.remove', accountId: account.id })}>Delete</button>
+            <div className="row-end">
+              <button className="btn-ghost" onClick={() => setEdit(false)}>Cancel</button>
+              <button
+                className="btn"
+                onClick={async () => {
+                  if (await onOp({ op: 'account.update', accountId: account.id, label, category, url, details, adminOnly })) setEdit(false);
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="acct-card">
+      <div className="acct-head">
+        <div className="acct-title">
+          <span className="acct-name">{account.label}</span>
+          {account.category && <span className="chip">{account.category}</span>}
+          {account.adminOnly && <span className="chip lock-chip">Admin only</span>}
+        </div>
+        {isAdmin && <button className="btn-ghost sm" onClick={() => setEdit(true)}>Edit</button>}
+      </div>
+      {account.details && <pre className="acct-details">{account.details}</pre>}
+      {account.url && (
+        <a className="doc-link" href={account.url} target="_blank" rel="noreferrer">
+          Open <Icon name="external" size={13} />
+        </a>
+      )}
     </div>
   );
 }

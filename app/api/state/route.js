@@ -5,6 +5,19 @@ import { seed } from '../../../lib/seed';
 
 export const dynamic = 'force-dynamic';
 
+// Add any top-level sections introduced after the DB was first seeded
+// (e.g. `accounts`). Only fills in missing keys — never overwrites existing data.
+function ensureDefaults(state) {
+  let changed = false;
+  for (const k of Object.keys(seed)) {
+    if (state[k] === undefined) {
+      state[k] = seed[k];
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 async function loadState() {
   const sb = getSupabase();
   const { data, error } = await sb
@@ -18,7 +31,11 @@ async function loadState() {
     await sb.from('app_state').upsert({ id: 1, data: seed });
     return seed;
   }
-  return data.data;
+  const state = data.data || {};
+  if (ensureDefaults(state)) {
+    await saveState(state);
+  }
+  return state;
 }
 
 async function saveState(state) {
@@ -160,6 +177,33 @@ function applyOp(state, op, body) {
     }
     case 'document.remove': {
       state.documents = state.documents.filter((x) => x.id !== body.docId);
+      break;
+    }
+    case 'account.add': {
+      if (!state.accounts) state.accounts = [];
+      state.accounts.push({
+        id: 'ac' + Date.now(),
+        label: body.label || 'Account',
+        category: body.category || 'General',
+        url: body.url || '',
+        details: body.details || '',
+        adminOnly: !!body.adminOnly,
+      });
+      break;
+    }
+    case 'account.update': {
+      const a = (state.accounts || []).find((x) => x.id === body.accountId);
+      if (a) {
+        if (body.label !== undefined) a.label = body.label;
+        if (body.category !== undefined) a.category = body.category;
+        if (body.url !== undefined) a.url = body.url;
+        if (body.details !== undefined) a.details = body.details;
+        if (body.adminOnly !== undefined) a.adminOnly = !!body.adminOnly;
+      }
+      break;
+    }
+    case 'account.remove': {
+      state.accounts = (state.accounts || []).filter((x) => x.id !== body.accountId);
       break;
     }
     default:
